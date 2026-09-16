@@ -1,0 +1,62 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="supreme_artifact"
+version="1.0.0"
+displayName="Supreme Artifact"
+description='''
+The ultimate artifact that transcends all mods.
+Defends against all attacks and breaks through all defenses.
+
+Integrated mechanisms from:
+- ManaitaPlus (更好的砧板)
+- Goety: Revelation (终末之环)
+- Final Sword (最终之剑)
+- FantasyEnding (幻想终结)
+- Salted Fish Set (咸鱼套装)
+'''
+
+[[dependencies.supreme_artifact]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.supreme_artifact]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.21)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.supreme_artifact]]
+    modId="curios"
+    mandatory=true
+    versionRange="[5.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+# Optional compatibility with referenced mods
+[[dependencies.supreme_artifact]]
+    modId="manaita_plus"
+    mandatory=false
+    versionRange="[1.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.supreme_artifact]]
+    modId="goety_revelation"
+    mandatory=false
+    versionRange="[1.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.supreme_artifact]]
+    modId="fantasy_ending"
+    mandatory=false
+    versionRange="[1.0,)"
+    ordering="AFTER"
+    side="BOTH"

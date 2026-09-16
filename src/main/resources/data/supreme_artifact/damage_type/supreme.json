@@ -1,0 +1,8 @@
+{
+  "bypasses_armor": true,
+  "bypasses_invulnerability": true,
+  "bypasses_magic": true,
+  "exhaustion": 0.0,
+  "message_id": "supreme",
+  "scaling": "never"
+}
