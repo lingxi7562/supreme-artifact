@@ -62,7 +62,7 @@ public class BladeOfFinalityItem extends SwordItem {
             stack.getOrCreateTag().putInt(MODE_KEY, nextMode);
             player.displayClientMessage(
                     Component.literal("§c[终焉之刃]§r 攻击模式: §e" + getModeName(nextMode)), true);
-            return InteractionResultHolder.sidedSuccess(stack, level);
+            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
 
         return InteractionResultHolder.pass(stack);

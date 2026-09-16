@@ -77,7 +77,7 @@ public class SupremeCharmItem extends Item implements ICurioItem {
             stack.getOrCreateTag().putInt(MODE_KEY, nextMode);
             player.displayClientMessage(
                 Component.literal("§6[万法归一]§r 攻击模式: §e" + getModeName(nextMode)), true);
-            return InteractionResultHolder.sidedSuccess(stack, level);
+            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
 
         return InteractionResultHolder.pass(stack);

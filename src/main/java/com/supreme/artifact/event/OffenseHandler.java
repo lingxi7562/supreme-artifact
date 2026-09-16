@@ -415,7 +415,7 @@ public final class OffenseHandler {
         if (event.level.isClientSide) return;
 
         TIME_STOPPED.removeIf(uuid -> {
-            Entity entity = event.level.getEntity(uuid);
+            Entity entity = event.level.getEntity((int) uuid.getLeastSignificantBits());
             if (entity instanceof LivingEntity living) {
                 if (!living.hasEffect(MobEffects.MOVEMENT_SLOWDOWN) ||
                         living.getEffect(MobEffects.MOVEMENT_SLOWDOWN).getDuration() <= 1) {

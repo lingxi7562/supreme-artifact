@@ -59,16 +59,14 @@ public class FantasyDamageHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onLivingHurt(LivingHurtEvent event) {
         DamageSource source = event.getSource();
-        Entity directEntity = source.getDirectEntity();
-        Entity causingEntity = source.getEntity();
-        
+
         // 检查是否为FE伤害
         if (isFePowerDamage(source)) {
-            handleFePowerDamage(event, directEntity, causingEntity);
+            handleFePowerDamage(event);
         }
         // 检查是否为DS伤害
         else if (isDsPowerDamage(source)) {
-            handleDsPowerDamage(event, directEntity, causingEntity);
+            handleDsPowerDamage(event);
         }
     }
 
@@ -93,32 +91,32 @@ public class FantasyDamageHandler {
      * 3. 附加负面状态效果
      * 4. 重置目标无敌时间
      */
-    private static void handleFePowerDamage(LivingHurtEvent event, Entity directEntity, Entity causingEntity) {
+    private static void handleFePowerDamage(LivingHurtEvent event) {
         if (!(event.getEntity() instanceof LivingEntity target)) return;
-        
+
         float originalDamage = event.getAmount();
-        
+
         // 计算绝对真实伤害（一半）
         float absoluteDamage = originalDamage * 0.5f;
         // 剩余FE伤害（一半）
         float feDamage = originalDamage - absoluteDamage;
-        
+
         // 重置目标无敌时间，确保伤害生效
         target.invulnerableTime = 0;
-        
+
         // 清除目标的保护效果
         clearProtectiveEffects(target);
-        
+
         // 对绝对真实伤害部分，直接操作血量（绕过所有防御）
         if (absoluteDamage > 0) {
             applyAbsoluteDamage(target, absoluteDamage);
         }
-        
+
         // 更新事件伤害为剩余的FE伤害
         event.setAmount(feDamage);
-        
+
         // 附加负面状态效果
-        applyNegativeEffects(target, causingEntity);
+        applyNegativeEffects(target, event.getSource().getEntity());
     }
 
     /**
@@ -127,17 +125,13 @@ public class FantasyDamageHandler {
      * 2. 重置目标无敌时间
      * 3. 绕过盾牌防御
      */
-    private static void handleDsPowerDamage(LivingHurtEvent event, Entity directEntity, Entity causingEntity) {
+    private static void handleDsPowerDamage(LivingHurtEvent event) {
         if (!(event.getEntity() instanceof LivingEntity target)) return;
-        
+
         // 如果是玩家主动攻击，确保穿透无敌帧
-        if (causingEntity instanceof Player player) {
+        if (event.getSource().getEntity() instanceof Player) {
             // 重置无敌时间
             target.invulnerableTime = 0;
-            
-            // 确保伤害不被减少
-            float currentDamage = event.getAmount();
-            event.setAmount(currentDamage);
         }
     }
 
