@@ -92,7 +92,7 @@ public class FantasyDamageHandler {
      * 4. 重置目标无敌时间
      */
     private static void handleFePowerDamage(LivingHurtEvent event) {
-        if (!(event.getEntity() instanceof LivingEntity target)) return;
+        LivingEntity target = event.getEntity();
 
         float originalDamage = event.getAmount();
 
@@ -126,7 +126,7 @@ public class FantasyDamageHandler {
      * 3. 绕过盾牌防御
      */
     private static void handleDsPowerDamage(LivingHurtEvent event) {
-        if (!(event.getEntity() instanceof LivingEntity target)) return;
+        LivingEntity target = event.getEntity();
 
         // 如果是玩家主动攻击，确保穿透无敌帧
         if (event.getSource().getEntity() instanceof Player) {
