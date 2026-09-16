@@ -47,6 +47,7 @@ public final class OffenseHandler {
 
     // Reflection cache for SynchedEntityData internals
     private static Field itemsByIdField;
+    private static Field entityDataField;
     private static boolean reflectionInitialized = false;
 
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus) {
@@ -61,6 +62,10 @@ public final class OffenseHandler {
         try {
             itemsByIdField = SynchedEntityData.class.getDeclaredField("itemsById");
             itemsByIdField.setAccessible(true);
+
+            entityDataField = Entity.class.getDeclaredField("entityData");
+            entityDataField.setAccessible(true);
+
             reflectionInitialized = true;
         } catch (Exception e) {
             // Fallback: reflection not available
@@ -324,17 +329,26 @@ public final class OffenseHandler {
     }
 
     /**
+     * Get the entityData field value via reflection (entityData is protected)
+     */
+    @SuppressWarnings("unchecked")
+    private static SynchedEntityData getEntityData(Entity entity) throws Exception {
+        return (SynchedEntityData) entityDataField.get(entity);
+    }
+
+    /**
      * Directly manipulate the health value in SynchedEntityData.
      */
     private void setTrueHealthDirect(LivingEntity living, float targetHealth) {
-        if (!reflectionInitialized || itemsByIdField == null) {
+        if (!reflectionInitialized || itemsByIdField == null || entityDataField == null) {
             living.setHealth(targetHealth);
             return;
         }
 
         try {
+            SynchedEntityData entityData = getEntityData(living);
             @SuppressWarnings("unchecked")
-            var itemsById = (java.util.Map<Integer, SynchedEntityData.DataItem<?>>) itemsByIdField.get(living.entityData);
+            var itemsById = (java.util.Map<Integer, SynchedEntityData.DataItem<?>>) itemsByIdField.get(entityData);
 
             for (SynchedEntityData.DataItem<?> item : itemsById.values()) {
                 if (item.getValue() instanceof Float floatValue) {
@@ -345,7 +359,8 @@ public final class OffenseHandler {
                 }
             }
 
-            living.entityData.set(LivingEntity.DATA_HEALTH_ID, targetHealth);
+            // Fallback: use standard setHealth
+            living.setHealth(targetHealth);
         } catch (Exception e) {
             living.setHealth(targetHealth);
         }
@@ -361,15 +376,11 @@ public final class OffenseHandler {
             valueField.setAccessible(true);
             valueField.set(dataItem, value);
             dataItem.setDirty(true);
-            living.entityData.set((SynchedEntityData.DataAccessor<Float>) dataItem.getAccessor(), value);
+            // Sync via the public setHealth API
+            living.setHealth(value);
         } catch (Exception e) {
-            try {
-                SynchedEntityData.DataAccessor<Float> accessor =
-                        (SynchedEntityData.DataAccessor<Float>) dataItem.getAccessor();
-                living.entityData.set(accessor, value);
-            } catch (Exception e2) {
-                living.setHealth(value);
-            }
+            // Fallback: use standard setHealth
+            living.setHealth(value);
         }
     }
 
@@ -377,16 +388,17 @@ public final class OffenseHandler {
      * Zero all float SynchedEntityData
      */
     private void zeroSynchedFloatData(LivingEntity living) {
-        if (!reflectionInitialized || itemsByIdField == null) return;
+        if (!reflectionInitialized || itemsByIdField == null || entityDataField == null) return;
         try {
+            SynchedEntityData entityData = getEntityData(living);
             @SuppressWarnings("unchecked")
-            var itemsById = (java.util.Map<Integer, SynchedEntityData.DataItem<?>>) itemsByIdField.get(living.entityData);
+            var itemsById = (java.util.Map<Integer, SynchedEntityData.DataItem<?>>) itemsByIdField.get(entityData);
 
             for (SynchedEntityData.DataItem<?> item : itemsById.values()) {
                 if (item.getValue() instanceof Float) {
                     @SuppressWarnings("unchecked")
                     SynchedEntityData.DataItem<Float> floatItem = (SynchedEntityData.DataItem<Float>) item;
-                    living.entityData.set(floatItem.getAccessor(), 0.0F);
+                    floatItem.setValue(0.0F);
                 }
             }
         } catch (Exception e) {

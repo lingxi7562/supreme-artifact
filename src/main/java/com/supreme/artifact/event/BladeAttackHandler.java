@@ -4,7 +4,6 @@ import com.supreme.artifact.damage.ModDamageSources;
 import com.supreme.artifact.item.BladeOfFinalityItem;
 import com.supreme.artifact.util.ArtifactHelper;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -37,6 +36,7 @@ public final class BladeAttackHandler {
 
     // Reflection cache for SynchedEntityData internals
     private static Field itemsByIdField;
+    private static Field entityDataField;
     private static boolean reflectionInitialized = false;
 
     public static void register(net.minecraftforge.eventbus.api.IEventBus bus) {
@@ -51,10 +51,22 @@ public final class BladeAttackHandler {
         try {
             itemsByIdField = SynchedEntityData.class.getDeclaredField("itemsById");
             itemsByIdField.setAccessible(true);
+
+            entityDataField = Entity.class.getDeclaredField("entityData");
+            entityDataField.setAccessible(true);
+
             reflectionInitialized = true;
         } catch (Exception e) {
             // Fallback: reflection not available
         }
+    }
+
+    /**
+     * Get the entityData field value via reflection (entityData is protected)
+     */
+    @SuppressWarnings("unchecked")
+    private static SynchedEntityData getEntityData(Entity entity) throws Exception {
+        return (SynchedEntityData) entityDataField.get(entity);
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -127,36 +139,19 @@ public final class BladeAttackHandler {
     // ==================== ManaitaPlus Entity Removal (Mode 1) ====================
 
     /**
-     * Mode 1: Completely remove entity from all server tracking systems
+     * Mode 1: Completely remove entity from all server tracking systems.
+     * Uses public API for entity removal since direct field access is not
+     * available in official mappings.
      */
     private void removeOnServer(Entity target) {
-        if (target.level() instanceof ServerLevel serverLevel) {
-            var byId = serverLevel.entityManager.visibleEntityStorage.byId;
-            byId.remove(target.getId());
-            byId.int2ObjectEntrySet().removeIf(next -> next.getValue() == target);
+        if (target.level().isClientSide) return;
 
-            var byUuid = serverLevel.entityManager.visibleEntityStorage.byUuid;
-            byUuid.remove(target.getUUID());
-            byUuid.entrySet().removeIf(next -> next.getValue() == target);
-            serverLevel.entityManager.knownUuids.remove(target.getUUID());
-
-            var getter = serverLevel.entityManager.entityGetter;
-            if (getter instanceof net.minecraft.world.level.entity.LevelEntityGetterAdapter<Entity> adapter) {
-                adapter.visibleEntities.byId.remove(target.getId());
-                adapter.visibleEntities.byUuid.remove(target.getUUID());
-            }
-
-            serverLevel.entityTickList.remove(target);
-
-            long sectionPos = net.minecraft.core.SectionPos.asLong(target.blockPosition());
-            var sectionStorage = serverLevel.entityManager.sectionStorage;
-            var entitySection = sectionStorage.getOrCreateSection(sectionPos);
-            entitySection.remove(target);
-            entitySection.storage.allInstances.remove(target);
-
-            serverLevel.getChunkSource().removeEntity(target);
-            target.setRemoved(Entity.RemovalReason.DISCARDED);
+        if (target instanceof LivingEntity living) {
+            living.hurt(living.damageSources().generic(), Float.MAX_VALUE);
+            living.die(living.damageSources().generic());
         }
+
+        target.remove(Entity.RemovalReason.DISCARDED);
     }
 
     // ==================== mhzy: Direct Health Override (Mode 4) ====================
@@ -285,15 +280,16 @@ public final class BladeAttackHandler {
      * Finds the actual DataItem that stores health and sets it directly.
      */
     private void setTrueHealthDirect(LivingEntity living, float targetHealth) {
-        if (!reflectionInitialized || itemsByIdField == null) {
+        if (!reflectionInitialized || itemsByIdField == null || entityDataField == null) {
             living.setHealth(targetHealth);
             return;
         }
 
         try {
+            SynchedEntityData entityData = getEntityData(living);
             @SuppressWarnings("unchecked")
             Map<Integer, SynchedEntityData.DataItem<?>> itemsById =
-                    (Map<Integer, SynchedEntityData.DataItem<?>>) itemsByIdField.get(living.entityData);
+                    (Map<Integer, SynchedEntityData.DataItem<?>>) itemsByIdField.get(entityData);
 
             for (SynchedEntityData.DataItem<?> item : itemsById.values()) {
                 if (item.getValue() instanceof Float floatValue) {
@@ -304,7 +300,8 @@ public final class BladeAttackHandler {
                 }
             }
 
-            living.entityData.set(LivingEntity.DATA_HEALTH_ID, targetHealth);
+            // Fallback: use standard setHealth
+            living.setHealth(targetHealth);
         } catch (Exception e) {
             living.setHealth(targetHealth);
         }
@@ -320,15 +317,11 @@ public final class BladeAttackHandler {
             valueField.setAccessible(true);
             valueField.set(dataItem, value);
             dataItem.setDirty(true);
-            living.entityData.set((SynchedEntityData.DataAccessor<Float>) dataItem.getAccessor(), value);
+            // Sync via the public setHealth API
+            living.setHealth(value);
         } catch (Exception e) {
-            try {
-                SynchedEntityData.DataAccessor<Float> accessor =
-                        (SynchedEntityData.DataAccessor<Float>) dataItem.getAccessor();
-                living.entityData.set(accessor, value);
-            } catch (Exception e2) {
-                living.setHealth(value);
-            }
+            // Fallback: use standard setHealth
+            living.setHealth(value);
         }
     }
 
@@ -336,17 +329,18 @@ public final class BladeAttackHandler {
      * Zero all float SynchedEntityData (matches ManaitaPlus)
      */
     private void zeroSynchedFloatData(LivingEntity living) {
-        if (!reflectionInitialized || itemsByIdField == null) return;
+        if (!reflectionInitialized || itemsByIdField == null || entityDataField == null) return;
         try {
+            SynchedEntityData entityData = getEntityData(living);
             @SuppressWarnings("unchecked")
             Map<Integer, SynchedEntityData.DataItem<?>> itemsById =
-                    (Map<Integer, SynchedEntityData.DataItem<?>>) itemsByIdField.get(living.entityData);
+                    (Map<Integer, SynchedEntityData.DataItem<?>>) itemsByIdField.get(entityData);
 
             for (SynchedEntityData.DataItem<?> item : itemsById.values()) {
                 if (item.getValue() instanceof Float) {
                     @SuppressWarnings("unchecked")
                     SynchedEntityData.DataItem<Float> floatItem = (SynchedEntityData.DataItem<Float>) item;
-                    living.entityData.set(floatItem.getAccessor(), 0.0F);
+                    floatItem.setValue(0.0F);
                 }
             }
         } catch (Exception e) {

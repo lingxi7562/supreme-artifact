@@ -15,7 +15,6 @@ import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
-import net.minecraftforge.event.entity.projectile.ArrowLooseEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
@@ -64,44 +63,23 @@ public class CharmAttackHandler {
     }
     
     /**
-     * 处理箭矢发射事件 - 加速箭矢
+     * 处理实体加入世界事件 - 应用箭矢加速
+     * 装备万法归一时，玩家射出的所有箭矢自动加速
      */
     @SubscribeEvent(priority = EventPriority.HIGH)
-    public void onArrowLoose(ArrowLooseEvent event) {
-        Player player = event.getEntity();
-        
-        if (!ArtifactHelper.hasCharm(player)) return;
-        
-        ItemStack bow = event.getBow();
-        if (bow.isEmpty()) return;
-        
-        // 标记箭矢为星辰箭矢
-        bow.getOrCreateTag().putBoolean("supreme_artifact:star_arrow", true);
-    }
-    
-    /**
-     * 处理实体加入世界事件 - 应用箭矢加速
-     */
-    @SubscribeEvent
     public void onEntityJoinLevel(EntityJoinLevelEvent event) {
         if (!(event.getEntity() instanceof AbstractArrow arrow)) return;
         if (!(arrow.getOwner() instanceof Player player)) return;
-        
+        if (player.level().isClientSide) return;
+
         if (!ArtifactHelper.hasCharm(player)) return;
-        
-        // 检查是否为星辰箭矢
-        ItemStack bow = player.getMainHandItem();
-        if (bow.getTag() != null && bow.getTag().getBoolean("supreme_artifact:star_arrow")) {
-            // 加速箭矢（7倍速度，3倍伤害）
-            arrow.setDeltaMovement(arrow.getDeltaMovement().scale(7.0));
-            arrow.setBaseDamage(arrow.getBaseDamage() * 3.0);
-            
-            // 标记为星辰箭矢
-            arrow.getPersistentData().putBoolean("supreme_artifact:star_arrow", true);
-            
-            // 清除弓的标记
-            bow.getTag().putBoolean("supreme_artifact:star_arrow", false);
-        }
+
+        // 加速箭矢（7倍速度，3倍伤害）
+        arrow.setDeltaMovement(arrow.getDeltaMovement().scale(7.0));
+        arrow.setBaseDamage(arrow.getBaseDamage() * 3.0);
+
+        // 标记为星辰箭矢
+        arrow.getPersistentData().putBoolean("supreme_artifact:star_arrow", true);
     }
     
     /**

@@ -3,6 +3,7 @@ package com.supreme.artifact.event;
 import com.supreme.artifact.SupremeArtifactMod;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 import net.minecraftforge.event.entity.EntityAttributeModificationEvent;
@@ -29,12 +30,12 @@ import net.minecraftforge.registries.RegistryObject;
  * - 使用 EventPriority.LOWEST 确保在其他 mod 之后处理
  * - 不修改原版类，使用 Mixin 或事件系统
  */
-@Mod.EventBusSubscriber(modid = SupremeArtifactMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(modid = SupremeArtifactMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class LifeInterferenceHandler {
     
     // 属性注册
     public static final DeferredRegister<Attribute> ATTRIBUTES = DeferredRegister.create(
-        ForgeRegistries.ATTRIBUTES, SupremeArtifactMod.MODID
+        ForgeRegistries.ATTRIBUTES, SupremeArtifactMod.MOD_ID
     );
     
     // 生命妨害值抗性属性 (0.0 - 2.0, 默认 1.0)

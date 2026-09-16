@@ -77,7 +77,7 @@ public class SupremeCharmItem extends Item implements ICurioItem {
             stack.getOrCreateTag().putInt(MODE_KEY, nextMode);
             player.displayClientMessage(
                 Component.literal("§6[万法归一]§r 攻击模式: §e" + getModeName(nextMode)), true);
-            return InteractionResultHolder.sidedSuccess(stack, hand);
+            return InteractionResultHolder.sidedSuccess(stack, level);
         }
 
         return InteractionResultHolder.pass(stack);
@@ -185,20 +185,16 @@ public class SupremeCharmItem extends Item implements ICurioItem {
      * 恢复属性修改器，防止被其他mod移除
      */
     private void restoreAttributeModifiers(Player player) {
-        // 检查关键属性是否存在我们的修改器
-        var modifiers = player.getAttributes().getAttributes();
-        boolean needsRestore = false;
-
-        // 检查护甲属性
+        // 检查护甲属性是否包含我们的修改器
         var armorAttr = player.getAttribute(Attributes.ARMOR);
         if (armorAttr != null && !hasModifier(armorAttr, "supreme_armor")) {
-            needsRestore = true;
-        }
-
-        // 如果需要恢复，重新应用所有属性
-        if (needsRestore) {
-            // 触发属性更新
-            player.refreshAttributes();
+            // 重新添加护甲属性修改器
+            armorAttr.addTransientModifier(new AttributeModifier(
+                UUID.fromString("8e855076-a8e5-441c-b0b4-1f23b8a2d5c1"),
+                "supreme_armor",
+                Double.POSITIVE_INFINITY,
+                AttributeModifier.Operation.ADDITION
+            ));
         }
     }
 
